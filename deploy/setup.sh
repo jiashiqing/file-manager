@@ -576,11 +576,13 @@ if [ "$RUNTIME" = "node" ] && [ -f "$APP_DIR/package.json" ] && [ "$INSTALL_DEPS
   REG_ARG=()
   [ -n "$NPM_REGISTRY" ] && REG_ARG=(--registry "$NPM_REGISTRY")
   run_npm() { ( cd "$APP_DIR" && "$NPM" "$@" --no-audit --no-fund >/dev/null 2>&1 ); }
+  # --no-package-lock：仓库不跟踪锁文件时不在服务器生成它，避免污染工作区
+  # （selfcheck 会把未跟踪文件当"未提交改动"告警；仓库跟踪了锁文件则走上面的 npm ci 分支）
   if [ -f "$APP_DIR/package-lock.json" ] && run_npm ci --omit=dev "${REG_ARG[@]+"${REG_ARG[@]}"}"; then
     ok "依赖已安装（npm ci）"
-  elif run_npm install --omit=dev "${REG_ARG[@]+"${REG_ARG[@]}"}"; then
+  elif run_npm install --omit=dev --no-package-lock "${REG_ARG[@]+"${REG_ARG[@]}"}"; then
     ok "依赖已安装（npm install --omit=dev）"
-  elif run_npm install "${REG_ARG[@]+"${REG_ARG[@]}"}"; then
+  elif run_npm install --no-package-lock "${REG_ARG[@]+"${REG_ARG[@]}"}"; then
     ok "依赖已安装（npm install）"
   else
     die "依赖安装失败，手动排查：cd $APP_DIR && npm install ${NPM_REGISTRY:+--registry $NPM_REGISTRY}"

@@ -398,7 +398,8 @@ if [ -d "$APP_DIR/.git" ]; then
     fi
   else
     fail "git 读不了这个仓库（dubious ownership）"
-    fix "git config --global --add safe.directory $APP_DIR"
+    fix "git config --system --add safe.directory $APP_DIR"
+    note "--system 全机生效；--global 在 sudo -E 下写的是登录用户的配置，换个身份跑又不认"
   fi
   [ -f "$APP_DIR/.deploy/history" ] && \
     note "最近一次部署：$(tail -1 "$APP_DIR/.deploy/history" | awk '{print $1, substr($2,1,7), $4}')"

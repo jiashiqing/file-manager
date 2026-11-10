@@ -219,8 +219,15 @@ deploy_env_load "$DEPLOY_ENV_PATH"
 #   fatal: detected dubious ownership in repository at '...'
 # 而 setup.sh 会把代码目录 chown 给运行账号，本脚本却要用 root 跑，两边对不上。
 # 做法：先探一下这个目录能不能正常读，读不了才为它单独放行（不放开全局）。
+# 放行写 --system（/etc/gitconfig，全机所有用户生效）：sudo -E 时 HOME 保留成登录用户，
+# --global 只写到那一个用户的 ~/.gitconfig，selfcheck / 手工 git 换个身份跑就又不认了。
 if [ -d "$APP_DIR/.git" ] && ! git -C "$APP_DIR" rev-parse --git-dir >/dev/null 2>&1; then
-  git config --global --add safe.directory "$APP_DIR" 2>/dev/null || true
+  if [ "$(id -u)" -eq 0 ]; then
+    git config --system --add safe.directory "$APP_DIR" 2>/dev/null \
+      || git config --global --add safe.directory "$APP_DIR" 2>/dev/null || true
+  else
+    git config --global --add safe.directory "$APP_DIR" 2>/dev/null || true
+  fi
 fi
 
 # 服务名默认从目录名推断，推断规则和 setup.sh 保持一致
@@ -385,11 +392,13 @@ install_deps() {
     [ -n "$NPM_REGISTRY" ] && reg=(--registry "$NPM_REGISTRY")
     run_npm() { ( cd "$APP_DIR" && "$npm" "$@" --no-audit --no-fund >/dev/null 2>&1 ); }
 
+    # --no-package-lock：仓库不跟踪锁文件时不在服务器生成它，避免污染工作区
+    # （selfcheck 会把未跟踪文件当"未提交改动"告警；仓库跟踪了锁文件则走上面的 npm ci 分支）
     if [ -f "$APP_DIR/package-lock.json" ] && run_npm ci --omit=dev "${reg[@]+"${reg[@]}"}"; then
       ok "依赖已安装（npm ci）"
-    elif run_npm install --omit=dev "${reg[@]+"${reg[@]}"}"; then
+    elif run_npm install --omit=dev --no-package-lock "${reg[@]+"${reg[@]}"}"; then
       ok "依赖已安装（npm install --omit=dev）"
-    elif run_npm install "${reg[@]+"${reg[@]}"}"; then
+    elif run_npm install --no-package-lock "${reg[@]+"${reg[@]}"}"; then
       ok "依赖已安装（npm install）"
     else
       die "依赖安装失败，手动排查：cd $APP_DIR && npm install${NPM_REGISTRY:+ --registry $NPM_REGISTRY}"
