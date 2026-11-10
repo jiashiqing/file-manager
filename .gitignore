@@ -1,0 +1,12 @@
+# 运行时数据，永不入库
+files/
+config.json
+
+# 部署参数快照（本机专属）
+.deploy/
+
+# 依赖与杂物
+node_modules/
+*.log
+.DS_Store
+.playwright-cli/

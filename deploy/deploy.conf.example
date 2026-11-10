@@ -1,0 +1,58 @@
+# git-repo-deploy · 部署配置示例
+#
+# 用法：复制成 deploy/deploy.conf（跟代码走，可进 git），
+#       或 /etc/ceping/deploy.conf 等仓库外路径。
+# 仓库外路径有三种登记方式，任选其一：
+#   ① 中央索引 /etc/git-repo-deploy/apps.conf 里写一行：
+#        /data/web/smart-assessment=/etc/ceping/deploy.conf
+#   ② 约定路径 /etc/git-repo-deploy/<项目目录名>.conf，例：
+#        /etc/git-repo-deploy/smart-assessment.conf
+#   ③ 临时指定：DEPLOY_ENV_FILE=/etc/ceping/deploy.conf bash pull-deploy.sh
+# 索引默认路径可用 GIT_REPO_DEPLOY_INDEX=/你的路径 覆盖（三个脚本都认）。
+#
+# 发现顺序：DEPLOY_ENV_FILE > deploy/deploy.conf > 中央索引 >
+#           /etc/git-repo-deploy/<目录名>.conf > .deploy/env
+# 优先级  ：命令行显式传入 > 本文件 > 脚本默认值
+#
+# 格式：纯 KEY=VALUE，一行一条；# 开头是注释。脚本按白名单解析，
+#       不会 source、不会 eval，$(...) / 反引号 / 分号都只是普通字符串。
+#
+# ⚠ 本文件首行没有「git-repo-deploy 部署参数快照」标记，因此被视为手写配置，
+#   setup.sh 默认只读、不会覆盖它。只有 DEPLOY_ENV_FORCE_SAVE=1 才会改写。
+# ⚠ 口令 WEB_PASS 不在白名单，也不会被写进任何快照；请命令行传或另行保管。
+# ⚠ APP_DIR 不从本文件读（仓库搬走时旧路径会盖掉新位置），请 cd 到项目目录或显式传。
+
+# ---- 身份与目录 ----
+APP_NAME=ceping
+SVC=ceping
+DATA_DIR=/data/web/smart-assessment/db
+
+# ---- 端口与访问 ----
+WEB_PORT=8092
+BACKEND_PORT=8093
+PUBLIC_URL=http://1.2.3.4:8092
+MODE=open
+# MODE=ipallow 时必须给 ALLOW_CIDR；MODE=basic 时可用 WEB_USER 指定用户名
+# ALLOW_CIDR=203.0.113.0/24
+# WEB_USER=teacher
+
+# ---- 健康检查与上传 ----
+HEALTH=/api/health
+SSE_PATH=none
+LIMIT_RE=^/api/(auth|upload|backups)
+MAX_BODY=64m
+
+# ---- 运行时 ----
+RUNTIME=node
+ENTRY=server.js
+NODE_MIN=22.13
+NODE_CHECK=node:sqlite
+NPM_REGISTRY=https://registry.npmmirror.com
+# EXTRA_ENV 会写进 systemd unit 的 Environment= 行，多个用空格分隔
+EXTRA_ENV=SA_BEHIND_PROXY=1
+
+# ---- 部署行为 ----
+BRANCH=main
+BACKUP_DIR=/data/backup
+BACKUP_KEEP=20
+HIST_KEEP=50

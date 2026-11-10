@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>文件管理系统</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%232563eb' d='M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z'/%3E%3C/svg%3E">
+<style>
+[hidden]{display:none!important}
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f6f7f9;--card:#fff;--line:#e5e7eb;--text:#1f2328;--muted:#6b7280;
+  --brand:#2563eb;--brand-weak:#eff4ff;--danger:#dc2626;--ok:#16a34a;
+}
+body{font-family:"Segoe UI","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.wrap{max-width:1160px;margin:0 auto;padding:32px 20px 60px}
+
+/* 顶栏 */
+header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:24px}
+h1{font-size:22px;font-weight:600;display:flex;align-items:center;gap:10px}
+h1 .dot{width:10px;height:10px;border-radius:50%;background:var(--brand)}
+.toolbar{display:flex;gap:10px;flex:1;max-width:520px}
+.search{flex:1;position:relative}
+.search input{width:100%;height:40px;border:1px solid var(--line);border-radius:8px;padding:0 14px 0 38px;font-size:14px;background:var(--card);outline:none;transition:border .15s}
+.search input:focus{border-color:var(--brand)}
+.search svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:var(--muted)}
+.btn{height:40px;padding:0 18px;border:none;border-radius:8px;font-size:14px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;transition:background .15s,opacity .15s}
+.btn-primary{background:var(--brand);color:#fff}
+.btn-primary:hover{background:#1d4ed8}
+.btn-ghost{background:var(--card);border:1px solid var(--line);color:var(--text)}
+.btn-ghost:hover{background:#f3f4f6}
+
+/* 上传区 */
+.drop{border:2px dashed var(--line);border-radius:12px;background:var(--card);padding:28px;text-align:center;color:var(--muted);font-size:14px;margin-bottom:20px;cursor:pointer;transition:border .15s,background .15s}
+.drop.on{border-color:var(--brand);background:var(--brand-weak);color:var(--brand)}
+.drop svg{width:28px;height:28px;margin-bottom:8px;color:currentColor}
+
+/* 进度 */
+.prog{margin-bottom:20px}
+.prog-row{display:flex;align-items:center;gap:10px;font-size:13px;margin-bottom:6px}
+.prog-row .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.prog-row .pct{color:var(--muted);width:44px;text-align:right}
+.bar{height:6px;border-radius:3px;background:var(--line);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--brand);width:0;transition:width .15s;border-radius:3px}
+
+/* 统计 */
+.stats{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-bottom:10px;gap:12px;flex-wrap:wrap}
+.stats .dir{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;max-width:60%}
+
+/* 分页 */
+.pager{display:flex;align-items:center;justify-content:center;gap:6px;padding:14px 0 4px;flex-wrap:wrap}
+.pager button{min-width:32px;height:32px;border:1px solid var(--line);background:var(--card);border-radius:7px;font-size:13px;cursor:pointer;color:var(--text);padding:0 8px}
+.pager button:hover:not(:disabled){border-color:var(--brand);color:var(--brand)}
+.pager button.cur{background:var(--brand);border-color:var(--brand);color:#fff;cursor:default}
+.pager button:disabled{opacity:.4;cursor:default}
+.pager .info{font-size:13px;color:var(--muted);margin:0 8px;white-space:nowrap}
+td.path{max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font-size:13px}
+
+/* 表格 */
+.table-card{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{ text-align:left;padding:12px 16px;color:var(--muted);font-weight:500;font-size:13px;border-bottom:1px solid var(--line);background:#fafbfc}
+td{padding:12px 16px;border-bottom:1px solid var(--line)}
+tr:last-child td{border-bottom:none}
+tbody tr:hover{background:#f8faff}
+td.name{max-width:340px}
+td.name .fn{display:flex;align-items:center;gap:8px;overflow:hidden}
+td.name span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+td .ic{flex:0 0 auto;width:18px;height:18px;color:var(--brand)}
+td.acts{white-space:nowrap;text-align:right}
+td.acts button{border:none;background:none;cursor:pointer;font-size:13px;padding:5px 8px;border-radius:6px;color:var(--brand)}
+td.acts button.del{color:var(--danger)}
+td.acts button:hover{background:var(--brand-weak)}
+td.acts button.del:hover{background:#fef2f2}
+.empty{padding:56px 20px;text-align:center;color:var(--muted);font-size:14px}
+.empty svg{width:40px;height:40px;margin-bottom:10px;opacity:.4}
+.hl{background:#fde68a;border-radius:2px;padding:0 1px}
+
+/* 弹窗 */
+.mask{position:fixed;inset:0;background:rgba(15,23,42,.45);display:flex;align-items:center;justify-content:center;z-index:50}
+.modal{background:#fff;border-radius:12px;padding:24px;width:500px;max-width:92vw;box-shadow:0 12px 40px rgba(0,0,0,.22)}
+.modal h3{font-size:16px;margin-bottom:8px;font-weight:600}
+.modal .cur{font-size:13px;color:var(--muted);margin-bottom:14px;word-break:break-all}
+.modal input{width:100%;height:40px;border:1px solid var(--line);border-radius:8px;padding:0 12px;font-size:14px;outline:none}
+.modal input:focus{border-color:var(--brand)}
+.modal .tip{font-size:12px;color:var(--muted);margin-top:8px}
+.modal .foot{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}
+
+/* toast */
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:28px;display:flex;flex-direction:column;gap:8px;z-index:99}
+.toast-item{background:#1f2328;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;box-shadow:0 4px 16px rgba(0,0,0,.18);animation:pop .2s}
+.toast-item.ok{background:var(--ok)}
+.toast-item.err{background:var(--danger)}
+@keyframes pop{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1><span class="dot"></span>文件管理系统</h1>
+    <div class="toolbar">
+      <div class="search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <input id="q" type="text" placeholder="搜索文件名…" autocomplete="off">
+      </div>
+      <button class="btn btn-primary" id="pick">＋ 上传文件</button>
+      <button class="btn btn-ghost" id="cfgBtn" title="配置上传文件的存储路径">⚙ 路径</button>
+    </div>
+  </header>
+
+  <div class="drop" id="drop">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 16V4m0 0L7 9m5-5l5 5"/><path d="M4 17v2a1 1 0 001 1h14a1 1 0 001-1v-2"/></svg>
+    <div>拖拽文件到此处，或点击选择上传</div>
+  </div>
+  <input type="file" id="file" multiple hidden>
+  <div class="prog" id="prog" hidden></div>
+
+  <div class="stats"><span id="count">—</span><span class="dir" id="dir" title=""></span></div>
+  <div class="table-card">
+    <table>
+      <thead><tr><th style="width:26%">文件名</th><th style="width:9%">大小</th><th style="width:15%">上传时间</th><th style="width:13%">上传IP</th><th style="width:24%">存储路径</th><th style="width:13%;text-align:right">操作</th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+    <div class="empty" id="empty" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/></svg>
+      <div id="emptyText">暂无文件，上传一个试试</div>
+    </div>
+  </div>
+  <div class="pager" id="pager" hidden>
+    <button id="prev">‹ 上一页</button>
+    <span id="pages"></span>
+    <button id="next">下一页 ›</button>
+    <span class="info" id="pinfo"></span>
+  </div>
+</div>
+<div id="toast"></div>
+
+<div class="mask" id="mask" hidden>
+  <div class="modal">
+    <h3>设置存储路径</h3>
+    <div class="cur" id="curDir">当前：—</div>
+    <input id="dirInput" type="text" placeholder="例如 D:\共享文件" spellcheck="false">
+    <div class="tip">输入绝对路径，目录不存在会自动创建，重启后仍然生效</div>
+    <div class="foot">
+      <button class="btn btn-ghost" id="cancelDir">取消</button>
+      <button class="btn btn-primary" id="saveDir">保存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const rowsEl = $('#rows'), emptyEl = $('#empty'), progEl = $('#prog');
+let items = [], query = '', page = 1, pages = 1, totalAll = 0;
+const SIZE = 10;
+
+function fmtSize(n){
+  if(n<1024)return n+' B';
+  if(n<1024**2)return (n/1024).toFixed(1)+' KB';
+  if(n<1024**3)return (n/1024**2).toFixed(1)+' MB';
+  return (n/1024**3).toFixed(2)+' GB';
+}
+function fmtTime(t){
+  const d = new Date(t), z=(x)=>String(x).padStart(2,'0');
+  return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())} ${z(d.getHours())}:${z(d.getMinutes())}`;
+}
+function esc(s){return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function hlName(name){
+  const safe = esc(name);
+  if(!query) return safe;
+  const i = name.toLowerCase().indexOf(query.toLowerCase());
+  if(i<0) return safe;
+  return esc(name.slice(0,i))+'<span class="hl">'+esc(name.slice(i,i+query.length))+'</span>'+esc(name.slice(i+query.length));
+}
+function toast(msg, type){
+  const el = document.createElement('div');
+  el.className = 'toast-item '+(type||'');
+  el.textContent = msg;
+  $('#toast').appendChild(el);
+  setTimeout(()=>el.remove(), 2600);
+}
+
+async function load(){
+  const r = await fetch('/api/files?page='+page+'&size='+SIZE+(query?'&q='+encodeURIComponent(query):''));
+  const d = await r.json();
+  items = d.items || []; pages = d.pages || 1; totalAll = d.total || 0;
+  if(page > pages){ page = pages; return load(); }
+  $('#count').textContent = (query ? `「${query}」匹配 ` : '共 ') + `${totalAll} 个文件 · 每页 ${SIZE} 个`;
+  const dirEl = $('#dir');
+  dirEl.textContent = '存储目录：' + (d.dir || '');
+  dirEl.title = d.dir || '';
+  renderPager();
+  render();
+}
+function renderPager(){
+  const pager = $('#pager'), pgs = $('#pages');
+  pager.hidden = totalAll === 0;
+  $('#prev').disabled = page <= 1;
+  $('#next').disabled = page >= pages;
+  $('#pinfo').textContent = `第 ${page} / ${pages} 页`;
+  pgs.innerHTML = '';
+  /* 页码窗口：最多显示 5 个，当前页居中 */
+  let s = Math.max(1, page - 2), e = Math.min(pages, s + 4);
+  s = Math.max(1, e - 4);
+  for(let i = s; i <= e; i++){
+    const b = document.createElement('button');
+    b.textContent = i;
+    if(i === page) b.className = 'cur';
+    b.onclick = ()=>{ if(page !== i){ page = i; load(); } };
+    pgs.appendChild(b);
+  }
+}
+function render(){
+  rowsEl.innerHTML = '';
+  emptyEl.hidden = items.length > 0;
+  $('#emptyText').textContent = query ? `没有匹配「${query}」的文件` : '暂无文件，上传一个试试';
+  for(const it of items){
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="name"><div class="fn">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>
+        <span title="${esc(it.name)}">${hlName(it.name)}</span></div></td>
+      <td>${fmtSize(it.size)}</td>
+      <td>${fmtTime(it.mtime)}</td>
+      <td>${esc(it.ip || '-')}</td>
+      <td class="path" title="${esc(it.path || '')}">${esc(it.path || '-')}</td>
+      <td class="acts">
+        <button data-dl="${esc(it.name)}">下载</button>
+        <button class="del" data-del="${esc(it.name)}">删除</button>
+      </td>`;
+    rowsEl.appendChild(tr);
+  }
+}
+
+/* 上传（带进度，逐个排队） */
+const queue = [];
+let uploading = false;
+async function doUpload(file){
+  return new Promise((resolve)=>{
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST','/api/upload');
+    xhr.setRequestHeader('x-filename', encodeURIComponent(file.name));
+    xhr.upload.onprogress = (e)=>{ if(e.lengthComputable) setProg(file.name, e.loaded/e.total); };
+    xhr.onload = ()=>{ doneProg(file.name); resolve(xhr.status===200); };
+    xhr.onerror = ()=>{ doneProg(file.name); resolve(false); };
+    xhr.send(file);
+  });
+}
+async function pump(){
+  if(uploading) return;
+  uploading = true;
+  try{
+    while(queue.length){
+      const f = queue.shift();
+      addProg(f.name);
+      const ok = await doUpload(f);
+      if(ok) toast(`「${f.name}」上传成功`,'ok');
+      else toast(`「${f.name}」上传失败`,'err');
+      doneProg(f.name);
+    }
+  } finally {
+    uploading = false;
+    progEl.hidden = true;
+    load();
+  }
+}
+function addProg(name){
+  progEl.hidden = false;
+  const row = document.createElement('div');
+  row.className = 'prog-row'; row.dataset.n = name;
+  row.innerHTML = `<div class="nm">${esc(name)}</div><div class="pct">0%</div>`;
+  const bar = document.createElement('div'); bar.className='bar'; bar.innerHTML='<i></i>';
+  progEl.append(row, bar);
+}
+function setProg(name, r){
+  const rows = progEl.querySelectorAll('.prog-row');
+  const row = [...rows].find(x=>x.dataset.n===name);
+  if(!row) return;
+  row.querySelector('.pct').textContent = Math.round(r*100)+'%';
+  row.nextElementSibling.querySelector('i').style.width = (r*100)+'%';
+}
+function doneProg(name){
+  const row = [...progEl.querySelectorAll('.prog-row')].find(x=>x.dataset.n===name);
+  if(!row) return;
+  const bar = row.nextElementSibling; /* 先取引用再删节点，脱离文档后 nextElementSibling 为 null */
+  row.remove();
+  if(bar) bar.remove();
+}
+function enqueue(files){
+  if(!files || !files.length) return;
+  queue.push(...files);
+  pump();
+}
+
+/* 事件绑定 */
+$('#pick').onclick = ()=>$('#file').click();
+$('#drop').onclick = ()=>$('#file').click();
+$('#file').onchange = (e)=>{ enqueue([...e.target.files]); e.target.value=''; };
+const drop = $('#drop');
+['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('on')}));
+['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('on')}));
+drop.addEventListener('drop', e=>enqueue([...e.dataTransfer.files]));
+
+let timer;
+$('#q').oninput = (e)=>{ query = e.target.value.trim(); page = 1; clearTimeout(timer); timer=setTimeout(load,200); };
+$('#prev').onclick = ()=>{ if(page > 1){ page--; load(); } };
+$('#next').onclick = ()=>{ if(page < pages){ page++; load(); } };
+
+/* 存储路径配置弹窗 */
+$('#cfgBtn').onclick = async ()=>{
+  const r = await fetch('/api/config');
+  const d = await r.json();
+  $('#curDir').textContent = '当前：' + (d.dir || '—');
+  $('#dirInput').value = d.dir || '';
+  $('#mask').hidden = false;
+  $('#dirInput').focus();
+};
+function closeModal(){ $('#mask').hidden = true; }
+$('#cancelDir').onclick = closeModal;
+$('#mask').onclick = (e)=>{ if(e.target === $('#mask')) closeModal(); };
+document.addEventListener('keydown', (e)=>{ if(e.key === 'Escape') closeModal(); });
+$('#dirInput').addEventListener('keydown', (e)=>{ if(e.key === 'Enter') $('#saveDir').click(); });
+$('#saveDir').onclick = async ()=>{
+  const dir = $('#dirInput').value.trim();
+  if(!dir) return toast('请输入路径','err');
+  const r = await fetch('/api/config', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({dir})
+  });
+  const d = await r.json();
+  if(d.ok){
+    toast('存储路径已切换：' + d.dir, 'ok');
+    closeModal();
+    page = 1;
+    load();
+  } else {
+    toast(d.error || '设置失败', 'err');
+  }
+};
+
+rowsEl.onclick = async (e)=>{
+  const dl = e.target.dataset.dl, del = e.target.dataset.del;
+  if(dl){ location.href = '/api/download?name='+encodeURIComponent(dl); }
+  else if(del){
+    if(!confirm(`确定删除「${del}」吗？`)) return;
+    const r = await fetch('/api/files?name='+encodeURIComponent(del), {method:'DELETE'});
+    if(r.ok){ toast('已删除','ok'); load(); } else toast('删除失败','err');
+  }
+};
+
+load();
+</script>
+</body>
+</html>
